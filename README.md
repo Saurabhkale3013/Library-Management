@@ -494,11 +494,3 @@ Description: Write a CTAS query to create a new table that lists each member and
 - **Data Analysis**: Insights into book categories, employee salaries, member registration trends, and issued books.
 - **Summary Reports**: Aggregated data on high-demand books and employee performance.
 
-## Conclusion
-
-This project demonstrates the application of SQL skills in creating and managing a library management system. It includes database setup, data manipulation, and advanced querying, providing a solid foundation for data management and analysis.
-
-
-- **Discord**: [Join our community for learning and collaboration](https://discord.gg/36h5f2Z5PK)
-
-Thank you for your interest in this project!
