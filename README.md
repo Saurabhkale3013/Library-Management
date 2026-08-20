@@ -277,27 +277,25 @@ Write a query to update the status of books in the books table to "Yes" when the
 
 ```sql
 
-CREATE OR REPLACE PROCEDURE add_return_records(p_return_id VARCHAR(10), p_issued_id VARCHAR(10), p_book_quality VARCHAR(10))
-LANGUAGE plpgsql
-AS $$
+DELIMITER $$
 
-DECLARE
-    v_isbn VARCHAR(50);
-    v_book_name VARCHAR(80);
-    
+DROP PROCEDURE IF EXISTS add_return_records$$
+
+CREATE PROCEDURE add_return_records(
+    IN p_return_id VARCHAR(10),
+    IN p_issued_id VARCHAR(10),
+    IN p_book_quality VARCHAR(10)
+)
 BEGIN
-    -- all your logic and code
-    -- inserting into returns based on users input
-    INSERT INTO return_status(return_id, issued_id, return_date, book_quality)
-    VALUES
-    (p_return_id, p_issued_id, CURRENT_DATE, p_book_quality);
+    DECLARE v_isbn VARCHAR(50);
+    DECLARE v_book_name VARCHAR(80);
 
-    SELECT 
-        issued_book_isbn,
-        issued_book_name
-        INTO
-        v_isbn,
-        v_book_name
+    -- inserting into returns based on user's input
+    INSERT INTO return_status(return_id, issued_id, return_date, book_quality)
+    VALUES (p_return_id, p_issued_id, CURDATE(), p_book_quality);
+
+    SELECT issued_book_isbn, issued_book_name
+    INTO v_isbn, v_book_name
     FROM issued_status
     WHERE issued_id = p_issued_id;
 
@@ -305,10 +303,11 @@ BEGIN
     SET status = 'yes'
     WHERE isbn = v_isbn;
 
-    RAISE NOTICE 'Thank you for returning the book: %', v_book_name;
-    
-END;
-$$
+    SELECT CONCAT('Thank you for returning the book: ', v_book_name) AS message;
+
+END$$
+
+DELIMITER ;
 
 
 -- Testing FUNCTION add_return_records
@@ -421,42 +420,42 @@ If the book is not available (status = 'no'), the procedure should return an err
 
 ```sql
 
-CREATE OR REPLACE PROCEDURE issue_book(p_issued_id VARCHAR(10), p_issued_member_id VARCHAR(30), p_issued_book_isbn VARCHAR(30), p_issued_emp_id VARCHAR(10))
-LANGUAGE plpgsql
-AS $$
+DELIMITER $$
 
-DECLARE
--- all the variabable
-    v_status VARCHAR(10);
+DROP PROCEDURE IF EXISTS issue_book$$
 
+CREATE PROCEDURE issue_book(
+    IN p_issued_id VARCHAR(10),
+    IN p_issued_member_id VARCHAR(30),
+    IN p_issued_book_isbn VARCHAR(30),
+    IN p_issued_emp_id VARCHAR(10)
+)
 BEGIN
--- all the code
+    -- all the variables
+    DECLARE v_status VARCHAR(10);
+
     -- checking if book is available 'yes'
-    SELECT 
-        status 
-        INTO
-        v_status
+    SELECT status
+    INTO v_status
     FROM books
     WHERE isbn = p_issued_book_isbn;
 
     IF v_status = 'yes' THEN
-
         INSERT INTO issued_status(issued_id, issued_member_id, issued_date, issued_book_isbn, issued_emp_id)
-        VALUES
-        (p_issued_id, p_issued_member_id, CURRENT_DATE, p_issued_book_isbn, p_issued_emp_id);
+        VALUES (p_issued_id, p_issued_member_id, CURDATE(), p_issued_book_isbn, p_issued_emp_id);
 
         UPDATE books
-            SET status = 'no'
+        SET status = 'no'
         WHERE isbn = p_issued_book_isbn;
 
-        RAISE NOTICE 'Book records added successfully for book isbn : %', p_issued_book_isbn;
-
-
+        SELECT CONCAT('Book records added successfully for book isbn: ', p_issued_book_isbn) AS message;
     ELSE
-        RAISE NOTICE 'Sorry to inform you the book you have requested is unavailable book_isbn: %', p_issued_book_isbn;
+        SELECT CONCAT('Sorry to inform you the book you have requested is unavailable, book_isbn: ', p_issued_book_isbn) AS message;
     END IF;
-END;
-$$
+
+END$$
+
+DELIMITER ;
 
 -- Testing The function
 SELECT * FROM books;
@@ -485,6 +484,25 @@ Description: Write a CTAS query to create a new table that lists each member and
     Member ID
     Number of overdue books
     Total fines
+
+CREATE TABLE overdue_fines AS
+SELECT 
+    ist.issued_member_id AS member_id,
+    COUNT(ist.issued_id) AS number_of_overdue_books,
+    SUM(
+        (DATEDIFF(CURDATE(), ist.issued_date) - 30) * 0.50
+    ) AS total_fines
+FROM issued_status AS ist
+LEFT JOIN return_status AS rs
+    ON rs.issued_id = ist.issued_id
+WHERE 
+    rs.return_id IS NULL
+    AND DATEDIFF(CURDATE(), ist.issued_date) > 30
+GROUP BY 1;
+
+select * from overdue_fines;
+
+    
 
 
 
